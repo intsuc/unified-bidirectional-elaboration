@@ -1,13 +1,11 @@
-inductive Mode (α : Type _) where
-  | check : α → Mode α
-  | synth : Mode α
+inductive Mode (τ : Type _) where
+  | check : τ → Mode τ
+  | synth : Mode τ
 
-def complement : {α : Type _} → Mode α → Type _
+def complement : {τ : Type _} → Mode τ → Type _
   | _, .check _ => Unit
-  | α, .synth   => α
+  | τ, .synth   => τ
 
 postfix:max "ᶜ" => complement
 
-class UnaryElaborator (α β τ : Type _) (m : Type _ → Type _) [Monad m] where
-  elaborate : α → (mode : Mode τ) → m (β × modeᶜ)
-  sub : τ → τ → Bool
+abbrev UnaryElaborator (α β τ : Type _) (m : Type _ → Type _) [Monad m] := α → (mode : Mode τ) → m (β × modeᶜ)

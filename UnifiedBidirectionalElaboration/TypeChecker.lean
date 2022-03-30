@@ -14,34 +14,31 @@ end
 
 abbrev Ctx := Array Typ
 
-partial instance TypeValidator : UnaryElaborator (Ctx × Exp) Unit Typ (Except Unit) where
-  elaborate :=
-    let rec validate
-      | (Γ, .abs e₁),     .check (.func a b) => validate (Γ.push a, e₁) (.check b)
-      | (Γ, .app e₁ e₂),  .check t           => do
-        let ((), t₂) ← validate (Γ, e₂) .synth
-        validate (Γ, e₁) (.check (.func t₂ t))
-      | (Γ, e),           .check t           => do
-        ((), _) ← validate (Γ, e) .synth
-        .ok ((), ())
-      | (Γ, .var n₁),     .synth             =>
-        match Γ.get? n₁ with
-        | none    => .error ()
-        | some t₁ => .ok ((), t₁)
-      | (_, .abs _),      .synth             => .error ()
-      | (Γ, .app e₁ e₂),  .synth             => do
-        if let ((), Typ.func a b) ← validate (Γ, e₁) .synth then
-          ((), ()) ← validate (Γ, e₂) (.check a)
-          .ok ((), b)
-        else .error ()
-      | (Γ, .anno e₁ t₂), .synth             => do
-        ((), ()) ← validate (Γ, e₁) (.check t₂)
-        .ok ((), t₂)
-    validate
+def conv : Typ → Typ → Bool
+  | .func t₁₁ t₁₂, .func t₂₁ t₂₂ => conv t₁₁ t₂₁ && conv t₂₁ t₂₂
+  | .type,         .type         => true
+  | _,             _             => false
 
-  sub :=
-    let rec conv
-      | .func t₁₁ t₁₂, .func t₂₁ t₂₂ => conv t₁₁ t₂₁ && conv t₂₁ t₂₂
-      | .type,         .type         => true
-      | _,             _             => false
-    conv
+partial def validate : UnaryElaborator (Ctx × Exp) Unit Typ (Except Unit)
+  -- check
+  | (Γ, .abs e₁),     .check (.func a b) => validate (Γ.push a, e₁) (.check b)
+  | (Γ, .app e₁ e₂),  .check t           => do
+    let ((), t₂) ← validate (Γ, e₂) .synth
+    validate (Γ, e₁) (.check (.func t₂ t))
+  | (Γ, e),           .check expected    => do
+    let ((), actual) ← validate (Γ, e) .synth
+    if conv expected actual then .ok ((), ()) else .error ()
+  -- synth
+  | (Γ, .var n₁),     .synth             =>
+    match Γ.get? n₁ with
+    | none    => .error ()
+    | some t₁ => .ok ((), t₁)
+  | (_, .abs _),      .synth             => .error ()
+  | (Γ, .app e₁ e₂),  .synth             => do
+    if let ((), Typ.func a b) ← validate (Γ, e₁) .synth then
+      ((), ()) ← validate (Γ, e₂) (.check a)
+      .ok ((), b)
+    else .error ()
+  | (Γ, .anno e₁ t₂), .synth             => do
+    ((), ()) ← validate (Γ, e₁) (.check t₂)
+    .ok ((), t₂)
