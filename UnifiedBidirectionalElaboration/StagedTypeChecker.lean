@@ -29,6 +29,7 @@ abbrev Ctx := Array Entry
 def conv : Typ → Typ → Bool
   | .func t₁₁ t₁₂, .func t₂₁ t₂₂ => conv t₁₁ t₂₁ && conv t₂₁ t₂₂
   | .unit,         .unit         => true
+  | .code t₁₁,     .code t₂₁     => conv t₁₁ t₂₁
   | _,             _             => false
 
 -- TODO: simplify
